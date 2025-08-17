@@ -1,6 +1,23 @@
 // IMPORTANT: When adding new env variables to the codebase, update this array
 export const ENV_VARIABLES: EnvVariable[] = [
-  // Add your active environment variables here
+  {
+    name: "OPENAI_API_KEY",
+    description: "OpenAI API key for ChatGPT API access",
+    required: false,
+    instructions: "Go to [OpenAI Platform](https://platform.openai.com/api-keys) → Create new secret key → Copy the sk-... key.\n This is optional - you can also configure it in the application interface."
+  },
+  {
+    name: "GITHUB_TOKEN",
+    description: "GitHub Personal Access Token for repository uploads",
+    required: false,
+    instructions: "Go to [GitHub Settings](https://github.com/settings/tokens) → Personal access tokens → Generate new token → Select 'repo' scope → Copy the ghp_... token.\n This is optional - you can also configure it in the application interface."
+  },
+  {
+    name: "GITHUB_REPO",
+    description: "GitHub repository for uploading chat logs (format: username/repository-name)",
+    required: false,
+    instructions: "Specify the GitHub repository where chat logs will be uploaded in the format 'username/repository-name' (e.g., 'john/chat-history').\n This is optional - you can also configure it in the application interface."
+  }
 ];
 
 // SUPABASE/DATABASE VARIABLES (uncomment and add to ENV_VARIABLES array when adding database features)
