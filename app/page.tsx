@@ -86,43 +86,87 @@ export default function ChatGPTLogger() {
     loadChatHistory()
     checkLastUpload()
     checkMorningPrompt()
-  }, [])
+    
+    // Add keyboard shortcuts
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + Enter to send message
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && prompt.trim() && !isLoading) {
+        e.preventDefault()
+        sendPrompt()
+      }
+      // Escape to clear prompt
+      if (e.key === 'Escape' && prompt) {
+        setPrompt('')
+      }
+    }
+    
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [prompt, isLoading])
 
   const loadConfig = () => {
-    const savedConfig = localStorage.getItem('chatgpt-logger-config')
-    if (savedConfig) {
-      const parsed = JSON.parse(savedConfig)
-      // Ensure new properties have defaults
-      const configWithDefaults = {
-        ...config,
-        ...parsed,
-        maxChunkSize: parsed.maxChunkSize || 10,
-        morningPromptEnabled: parsed.morningPromptEnabled !== undefined ? parsed.morningPromptEnabled : true
+    try {
+      const savedConfig = localStorage.getItem('chatgpt-logger-config')
+      if (savedConfig) {
+        const parsed = JSON.parse(savedConfig)
+        // Ensure new properties have defaults
+        const configWithDefaults = {
+          ...config,
+          ...parsed,
+          maxChunkSize: parsed.maxChunkSize || 10,
+          morningPromptEnabled: parsed.morningPromptEnabled !== undefined ? parsed.morningPromptEnabled : true
+        }
+        setConfig(configWithDefaults)
+        setIsConfigured(!!configWithDefaults.openaiApiKey && !!configWithDefaults.githubToken && !!configWithDefaults.githubRepo)
       }
-      setConfig(configWithDefaults)
-      setIsConfigured(!!configWithDefaults.openaiApiKey && !!configWithDefaults.githubToken && !!configWithDefaults.githubRepo)
+    } catch (error) {
+      console.error('Error loading config:', error)
+      toast.error('Failed to load configuration. Using defaults.')
     }
   }
 
   const saveConfig = (newConfig: Config) => {
-    localStorage.setItem('chatgpt-logger-config', JSON.stringify(newConfig))
-    setConfig(newConfig)
-    setIsConfigured(!!newConfig.openaiApiKey && !!newConfig.githubToken && !!newConfig.githubRepo)
+    try {
+      localStorage.setItem('chatgpt-logger-config', JSON.stringify(newConfig))
+      setConfig(newConfig)
+      setIsConfigured(!!newConfig.openaiApiKey && !!newConfig.githubToken && !!newConfig.githubRepo)
+      toast.success('Configuration saved successfully!')
+    } catch (error) {
+      console.error('Error saving config:', error)
+      toast.error('Failed to save configuration')
+    }
   }
 
   const loadChatHistory = () => {
-    const today = new Date().toISOString().split('T')[0]
-    const savedHistory = localStorage.getItem(`chat-history-${today}`)
-    if (savedHistory) {
-      setChatHistory(JSON.parse(savedHistory))
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const savedHistory = localStorage.getItem(`chat-history-${today}`)
+      if (savedHistory) {
+        const parsed = JSON.parse(savedHistory)
+        if (Array.isArray(parsed)) {
+          setChatHistory(parsed)
+        } else {
+          console.warn('Invalid chat history format, resetting to empty array')
+          setChatHistory([])
+        }
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error)
+      setChatHistory([])
+      toast.error('Failed to load chat history')
     }
   }
 
   const saveChatEntry = (entry: ChatEntry) => {
-    const today = new Date().toISOString().split('T')[0]
-    const newHistory = [...chatHistory, entry]
-    setChatHistory(newHistory)
-    localStorage.setItem(`chat-history-${today}`, JSON.stringify(newHistory))
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const newHistory = [...chatHistory, entry]
+      setChatHistory(newHistory)
+      localStorage.setItem(`chat-history-${today}`, JSON.stringify(newHistory))
+    } catch (error) {
+      console.error('Error saving chat entry:', error)
+      toast.error('Failed to save conversation')
+    }
   }
 
   const checkLastUpload = () => {
@@ -178,13 +222,21 @@ export default function ChatGPTLogger() {
   }
 
   const processImportFile = async () => {
-    if (!importFile) return
+    if (!importFile) {
+      toast.error('No file selected')
+      return
+    }
     
     setIsImporting(true)
     setImportProgress(0)
     
     try {
       const text = await importFile.text()
+      
+      if (!text.trim()) {
+        throw new Error('File is empty')
+      }
+      
       const data = JSON.parse(text)
       
       let conversations: ImportedChat[] = []
@@ -196,27 +248,39 @@ export default function ChatGPTLogger() {
         conversations = data.conversations
       } else if (data.mapping) {
         conversations = [data]
+      } else {
+        throw new Error('Unrecognized file format')
+      }
+      
+      if (conversations.length === 0) {
+        throw new Error('No conversations found in file')
       }
       
       const totalConversations = conversations.length
-      const chunkSize = config.maxChunkSize
+      const chunkSize = Math.max(1, Math.min(config.maxChunkSize, 50)) // Ensure valid chunk size
       let processedCount = 0
+      let importedCount = 0
       
       for (let i = 0; i < conversations.length; i += chunkSize) {
         const chunk = conversations.slice(i, i + chunkSize)
         
         for (const conv of chunk) {
-          const chatEntries = extractChatEntries(conv)
-          if (chatEntries.length > 0) {
-            const convDate = conv.create_time 
-              ? new Date(conv.create_time * 1000).toISOString().split('T')[0]
-              : new Date().toISOString().split('T')[0]
-            
-            const existingHistory = localStorage.getItem(`chat-history-${convDate}`)
-            const existing = existingHistory ? JSON.parse(existingHistory) : []
-            const combined = [...existing, ...chatEntries]
-            
-            localStorage.setItem(`chat-history-${convDate}`, JSON.stringify(combined))
+          try {
+            const chatEntries = extractChatEntries(conv)
+            if (chatEntries.length > 0) {
+              const convDate = conv.create_time 
+                ? new Date(conv.create_time * 1000).toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0]
+              
+              const existingHistory = localStorage.getItem(`chat-history-${convDate}`)
+              const existing = existingHistory ? JSON.parse(existingHistory) : []
+              const combined = [...existing, ...chatEntries]
+              
+              localStorage.setItem(`chat-history-${convDate}`, JSON.stringify(combined))
+              importedCount++
+            }
+          } catch (convError) {
+            console.warn('Failed to process conversation:', convError)
           }
           
           processedCount++
@@ -232,9 +296,10 @@ export default function ChatGPTLogger() {
       loadChatHistory() // Refresh current day's history
       setShowImportDialog(false)
       setImportFile(null)
-      toast.success(`Successfully imported ${processedCount} conversations!`)
+      toast.success(`Successfully imported ${importedCount} conversations from ${processedCount} processed!`)
     } catch (error) {
-      toast.error('Failed to import file. Please check the format.')
+      console.error('Import error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to import file. Please check the format.')
     } finally {
       setIsImporting(false)
       setImportProgress(0)
@@ -377,7 +442,15 @@ export default function ChatGPTLogger() {
   }
 
   const sendPrompt = async () => {
-    if (!prompt.trim() || !config.openaiApiKey) return
+    if (!prompt.trim()) {
+      toast.error('Please enter a message')
+      return
+    }
+    
+    if (!config.openaiApiKey) {
+      toast.error('Please configure your OpenAI API key')
+      return
+    }
 
     setIsLoading(true)
     try {
@@ -387,7 +460,7 @@ export default function ChatGPTLogger() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt,
+          prompt: prompt.trim(),
           apiKey: config.openaiApiKey,
           model: config.model
         }),
@@ -399,9 +472,13 @@ export default function ChatGPTLogger() {
         throw new Error(data.error || 'Failed to get response')
       }
       
+      if (!data.response) {
+        throw new Error('No response received from ChatGPT')
+      }
+      
       const entry: ChatEntry = {
         timestamp: data.timestamp,
-        prompt,
+        prompt: prompt.trim(),
         response: data.response,
         model: data.model
       }
@@ -411,6 +488,7 @@ export default function ChatGPTLogger() {
       setPrompt('')
       toast.success('Message sent and logged successfully!')
     } catch (error) {
+      console.error('Send prompt error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to send message. Please check your API key.')
     } finally {
       setIsLoading(false)
@@ -581,6 +659,7 @@ export default function ChatGPTLogger() {
                       variant="outline" 
                       onClick={() => saveConfig(config)}
                       disabled={!config.openaiApiKey || !config.githubToken || !config.githubRepo}
+                      className="border-gray-600 bg-gray-800 text-white hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Save Configuration
                     </Button>
@@ -611,7 +690,7 @@ export default function ChatGPTLogger() {
                   <Copy className="w-4 h-4 mr-1" />
                   Copy Yesterday's Chats
                 </Button>
-                <Button size="sm" variant="outline" onClick={dismissMorningPrompt}>
+                <Button size="sm" variant="outline" onClick={dismissMorningPrompt} className="border-gray-600 bg-gray-800 text-white hover:bg-gray-700 hover:border-gray-500 transition-colors">
                   Skip
                 </Button>
               </div>
@@ -632,7 +711,7 @@ export default function ChatGPTLogger() {
                     variant="outline" 
                     size="sm" 
                     onClick={() => setShowGuide(true)}
-                    className="border-gray-600 text-white hover:bg-gray-700"
+                    className="border-gray-600 bg-gray-800 text-white hover:bg-gray-700 hover:border-gray-500 transition-colors"
                   >
                     <Book className="w-4 h-4 mr-2" />
                     Guide
@@ -649,7 +728,7 @@ export default function ChatGPTLogger() {
                     variant="outline" 
                     size="sm" 
                     onClick={() => setShowImportDialog(true)}
-                    className="border-gray-600 text-white hover:bg-gray-700"
+                    className="border-gray-600 bg-gray-800 text-white hover:bg-gray-700 hover:border-gray-500 transition-colors"
                   >
                     <FileText className="w-4 h-4 mr-2" />
                     Import JSON
@@ -667,7 +746,7 @@ export default function ChatGPTLogger() {
                     size="sm" 
                     onClick={runTrial}
                     disabled={showTrialMode || !config.openaiApiKey}
-                    className="border-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
+                    className="border-gray-600 bg-gray-800 text-white hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <TestTube className="w-4 h-4 mr-2" />
                     {showTrialMode ? 'Testing...' : 'Run Trial'}
@@ -703,7 +782,7 @@ export default function ChatGPTLogger() {
                   <Label htmlFor="prompt" className="text-gray-300">Your Message</Label>
                   <Textarea
                     id="prompt"
-                    placeholder="Type your message here..."
+                    placeholder="Type your message here... (Ctrl/Cmd + Enter to send, Escape to clear)"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     rows={3}
@@ -745,7 +824,7 @@ export default function ChatGPTLogger() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" onClick={exportLogs} className="border-gray-600 text-white hover:bg-gray-700">
+                        <Button variant="outline" size="sm" onClick={exportLogs} className="border-gray-600 bg-gray-800 text-white hover:bg-gray-700 hover:border-gray-500 transition-colors">
                           <Download className="w-4 h-4 mr-2" />
                           Export
                         </Button>
@@ -821,7 +900,7 @@ export default function ChatGPTLogger() {
                       <Button 
                         onClick={uploadToGitHub} 
                         variant="outline" 
-                        className="w-full border-gray-600 text-white hover:bg-gray-700"
+                        className="w-full border-gray-600 bg-gray-800 text-white hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         disabled={chatHistory.length === 0}
                       >
                         <Upload className="w-4 h-4 mr-2" />
@@ -870,7 +949,7 @@ export default function ChatGPTLogger() {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="outline" className="w-full border-gray-600 text-white hover:bg-gray-700">
+                          <Button variant="outline" className="w-full border-gray-600 bg-gray-800 text-white hover:bg-gray-700 hover:border-gray-500 transition-colors">
                             Edit Configuration
                           </Button>
                         </TooltipTrigger>
@@ -1039,7 +1118,7 @@ export default function ChatGPTLogger() {
                     setImportProgress(0)
                   }}
                   disabled={isImporting}
-                  className="border-gray-600 text-white hover:bg-gray-700"
+                  className="border-gray-600 bg-gray-800 text-white hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Cancel
                 </Button>
