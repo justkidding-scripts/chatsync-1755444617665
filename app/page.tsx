@@ -9,10 +9,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Switch } from '@/components/ui/switch'
-import { Calendar, Clock, Github, MessageSquare, Settings, Download, Upload, CheckCircle, AlertCircle, Play, Square, FileText, Copy, TestTube, History } from 'lucide-react'
+import { Calendar, Clock, Github, MessageSquare, Settings, Download, Upload, CheckCircle, AlertCircle, Play, Square, FileText, Copy, TestTube, History, HelpCircle, Book, Info } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ChatEntry {
@@ -70,6 +71,7 @@ export default function ChatGPTLogger() {
   const [isImporting, setIsImporting] = useState(false)
   const [showTrialMode, setShowTrialMode] = useState(false)
   const [yesterdayCount, setYesterdayCount] = useState(0)
+  const [showGuide, setShowGuide] = useState(false)
 
   const setupSteps = [
     'Installing Dependencies',
@@ -497,21 +499,21 @@ export default function ChatGPTLogger() {
 
   if (!isConfigured) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4 text-white">
         <div className="max-w-2xl mx-auto space-y-6">
           <div className="text-center space-y-4">
-            <MessageSquare className="w-16 h-16 mx-auto text-blue-600" />
-            <h1 className="text-3xl font-bold">ChatGPT Conversation Logger</h1>
-            <p className="text-gray-600">Capture, store, and backup your ChatGPT conversations</p>
+            <MessageSquare className="w-16 h-16 mx-auto text-blue-400" />
+            <h1 className="text-3xl font-bold text-white">ChatGPT Conversation Logger</h1>
+            <p className="text-gray-300">Capture, store, and backup your ChatGPT conversations</p>
           </div>
 
-          <Card>
+          <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5" />
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Settings className="w-5 h-5 text-blue-400" />
                 Initial Setup
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-gray-300">
                 Configure your API keys and preferences to get started
               </CardDescription>
             </CardHeader>
@@ -593,12 +595,12 @@ export default function ChatGPTLogger() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4 text-white">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Morning Prompt Dialog */}
         {showMorningPrompt && (
-          <Alert className="border-blue-200 bg-blue-50">
-            <History className="h-4 w-4" />
+          <Alert className="border-blue-600 bg-gray-800 text-white">
+            <History className="h-4 w-4 text-blue-400" />
             <AlertDescription className="flex items-center justify-between">
               <span>
                 Good morning! You have {yesterdayCount} conversations from yesterday. 
@@ -619,27 +621,63 @@ export default function ChatGPTLogger() {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <MessageSquare className="w-8 h-8 text-blue-600" />
-            <h1 className="text-2xl font-bold">ChatGPT Logger</h1>
+            <MessageSquare className="w-8 h-8 text-blue-400" />
+            <h1 className="text-2xl font-bold text-white">ChatGPT Logger</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowImportDialog(true)}
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Import JSON
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={runTrial}
-              disabled={showTrialMode || !config.openaiApiKey}
-            >
-              <TestTube className="w-4 h-4 mr-2" />
-              {showTrialMode ? 'Testing...' : 'Run Trial'}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowGuide(true)}
+                    className="border-gray-600 text-white hover:bg-gray-700"
+                  >
+                    <Book className="w-4 h-4 mr-2" />
+                    Guide
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Open comprehensive user guide and help documentation</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowImportDialog(true)}
+                    className="border-gray-600 text-white hover:bg-gray-700"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Import JSON
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Import ChatGPT conversation history from exported JSON files</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={runTrial}
+                    disabled={showTrialMode || !config.openaiApiKey}
+                    className="border-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    <TestTube className="w-4 h-4 mr-2" />
+                    {showTrialMode ? 'Testing...' : 'Run Trial'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Test your OpenAI and GitHub configuration to ensure everything works</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Badge variant={schedulerRunning ? "default" : "secondary"}>
               {schedulerRunning ? "Scheduler Active" : "Scheduler Inactive"}
             </Badge>
@@ -653,68 +691,87 @@ export default function ChatGPTLogger() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <MessageSquare className="w-5 h-5 text-blue-400" />
                   Chat Interface
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="prompt">Your Message</Label>
+                  <Label htmlFor="prompt" className="text-gray-300">Your Message</Label>
                   <Textarea
                     id="prompt"
                     placeholder="Type your message here..."
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     rows={3}
+                    className="bg-gray-900 border-gray-600 text-white placeholder-gray-400"
                   />
                 </div>
-                <Button 
-                  onClick={sendPrompt} 
-                  disabled={!prompt.trim() || isLoading}
-                  className="w-full"
-                >
-                  {isLoading ? 'Sending...' : 'Send Message'}
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        onClick={sendPrompt} 
+                        disabled={!prompt.trim() || isLoading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        {isLoading ? 'Sending...' : 'Send Message'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Send your message to ChatGPT and automatically log the conversation</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 {response && (
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <Label className="text-sm text-gray-600">Response:</Label>
-                    <p className="mt-1">{response}</p>
+                  <div className="p-4 bg-gray-900 border border-gray-600 rounded-lg">
+                    <Label className="text-sm text-gray-400">Response:</Label>
+                    <p className="mt-1 text-white">{response}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between text-white">
                   <span className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5" />
+                    <Calendar className="w-5 h-5 text-blue-400" />
                     Today's Conversations ({chatHistory.length})
                   </span>
-                  <Button variant="outline" size="sm" onClick={exportLogs}>
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={exportLogs} className="border-gray-600 text-white hover:bg-gray-700">
+                          <Download className="w-4 h-4 mr-2" />
+                          Export
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Download today's conversations as a JSON file</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {chatHistory.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No conversations yet today</p>
+                    <p className="text-gray-400 text-center py-8">No conversations yet today</p>
                   ) : (
                     chatHistory.map((entry, index) => (
-                      <div key={index} className="border rounded-lg p-3 space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <div key={index} className="border border-gray-600 bg-gray-900 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-gray-400">
                           <Clock className="w-4 h-4" />
                           {new Date(entry.timestamp).toLocaleTimeString()}
-                          <Badge variant="secondary" className="text-xs">{entry.model}</Badge>
+                          <Badge variant="secondary" className="text-xs bg-gray-700 text-gray-300">{entry.model}</Badge>
                         </div>
-                        <div className="space-y-1">
-                          <p><strong>You:</strong> {entry.prompt}</p>
-                          <p><strong>ChatGPT:</strong> {entry.response}</p>
+                        <div className="space-y-1 text-white">
+                          <p><strong className="text-blue-400">You:</strong> {entry.prompt}</p>
+                          <p><strong className="text-green-400">ChatGPT:</strong> {entry.response}</p>
                         </div>
                       </div>
                     ))
@@ -725,42 +782,60 @@ export default function ChatGPTLogger() {
           </div>
 
           <div className="space-y-6">
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Github className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Github className="w-5 h-5 text-blue-400" />
                   GitHub Backup
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
+                <Alert className="bg-gray-900 border-gray-600 text-white">
+                  <AlertCircle className="h-4 w-4 text-yellow-400" />
                   <AlertDescription>
                     Auto-upload scheduled for {config.uploadTime} daily
                   </AlertDescription>
                 </Alert>
                 
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="scheduler">Automatic Upload</Label>
-                  <Switch
-                    id="scheduler"
-                    checked={schedulerRunning}
-                    onCheckedChange={toggleScheduler}
-                  />
+                  <Label htmlFor="scheduler" className="text-gray-300">Automatic Upload</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Switch
+                          id="scheduler"
+                          checked={schedulerRunning}
+                          onCheckedChange={toggleScheduler}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Enable/disable automatic daily uploads to GitHub at the scheduled time</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
 
-                <Button 
-                  onClick={uploadToGitHub} 
-                  variant="outline" 
-                  className="w-full"
-                  disabled={chatHistory.length === 0}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Now
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        onClick={uploadToGitHub} 
+                        variant="outline" 
+                        className="w-full border-gray-600 text-white hover:bg-gray-700"
+                        disabled={chatHistory.length === 0}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Now
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Immediately upload today's conversations to your GitHub repository</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
 
                 {lastUpload && (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
+                  <div className="flex items-center gap-2 text-sm text-green-400">
                     <CheckCircle className="w-4 h-4" />
                     Last uploaded: {lastUpload}
                   </div>
@@ -768,19 +843,19 @@ export default function ChatGPTLogger() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Settings className="w-5 h-5 text-blue-400" />
                   Settings
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="model">OpenAI Model</Label>
+                  <Label htmlFor="model" className="text-gray-300">OpenAI Model</Label>
                   <select
                     id="model"
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded bg-gray-900 border-gray-600 text-white"
                     value={config.model}
                     onChange={(e) => setConfig({ ...config, model: e.target.value })}
                   >
@@ -792,55 +867,68 @@ export default function ChatGPTLogger() {
 
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      Edit Configuration
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" className="w-full border-gray-600 text-white hover:bg-gray-700">
+                            Edit Configuration
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Update API keys, GitHub settings, upload schedule, and other preferences</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="bg-gray-800 border-gray-700 text-white">
                     <DialogHeader>
-                      <DialogTitle>Configuration Settings</DialogTitle>
-                      <DialogDescription>
+                      <DialogTitle className="text-white">Configuration Settings</DialogTitle>
+                      <DialogDescription className="text-gray-300">
                         Update your API keys and settings
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="edit-openai-key">OpenAI API Key</Label>
+                        <Label htmlFor="edit-openai-key" className="text-gray-300">OpenAI API Key</Label>
                         <Input
                           id="edit-openai-key"
                           type="password"
                           value={config.openaiApiKey}
                           onChange={(e) => setConfig({ ...config, openaiApiKey: e.target.value })}
+                          className="bg-gray-900 border-gray-600 text-white"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="edit-github-token">GitHub Token</Label>
+                        <Label htmlFor="edit-github-token" className="text-gray-300">GitHub Token</Label>
                         <Input
                           id="edit-github-token"
                           type="password"
                           value={config.githubToken}
                           onChange={(e) => setConfig({ ...config, githubToken: e.target.value })}
+                          className="bg-gray-900 border-gray-600 text-white"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="edit-github-repo">GitHub Repository</Label>
+                        <Label htmlFor="edit-github-repo" className="text-gray-300">GitHub Repository</Label>
                         <Input
                           id="edit-github-repo"
                           value={config.githubRepo}
                           onChange={(e) => setConfig({ ...config, githubRepo: e.target.value })}
+                          className="bg-gray-900 border-gray-600 text-white"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="edit-upload-time">Upload Time</Label>
+                        <Label htmlFor="edit-upload-time" className="text-gray-300">Upload Time</Label>
                         <Input
                           id="edit-upload-time"
                           type="time"
                           value={config.uploadTime}
                           onChange={(e) => setConfig({ ...config, uploadTime: e.target.value })}
+                          className="bg-gray-900 border-gray-600 text-white"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="edit-chunk-size">Import Chunk Size</Label>
+                        <Label htmlFor="edit-chunk-size" className="text-gray-300">Import Chunk Size</Label>
                         <Input
                           id="edit-chunk-size"
                           type="number"
@@ -848,36 +936,46 @@ export default function ChatGPTLogger() {
                           max="50"
                           value={config.maxChunkSize}
                           onChange={(e) => setConfig({ ...config, maxChunkSize: parseInt(e.target.value) || 10 })}
+                          className="bg-gray-900 border-gray-600 text-white"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Number of conversations to process at once during import</p>
+                        <p className="text-xs text-gray-400 mt-1">Number of conversations to process at once during import</p>
                       </div>
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="edit-morning-prompt">Morning Prompt</Label>
+                        <Label htmlFor="edit-morning-prompt" className="text-gray-300">Morning Prompt</Label>
                         <Switch
                           id="edit-morning-prompt"
                           checked={config.morningPromptEnabled}
                           onCheckedChange={(checked) => setConfig({ ...config, morningPromptEnabled: checked })}
                         />
                       </div>
-                      <Button onClick={() => saveConfig(config)} className="w-full">
+                      <Button onClick={() => saveConfig(config)} className="w-full bg-blue-600 hover:bg-blue-700">
                         Save Changes
                       </Button>
                     </div>
                   </DialogContent>
                 </Dialog>
 
-                <Button 
-                  variant="destructive" 
-                  onClick={() => {
-                    localStorage.clear()
-                    setIsConfigured(false)
-                    setChatHistory([])
-                    toast.success('Configuration reset successfully')
-                  }}
-                  className="w-full"
-                >
-                  Reset Application
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => {
+                          localStorage.clear()
+                          setIsConfigured(false)
+                          setChatHistory([])
+                          toast.success('Configuration reset successfully')
+                        }}
+                        className="w-full bg-red-600 hover:bg-red-700"
+                      >
+                        Reset Application
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Clear all data including configuration, chat history, and preferences</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </CardContent>
             </Card>
           </div>
@@ -885,10 +983,10 @@ export default function ChatGPTLogger() {
 
         {/* Import Dialog */}
         <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md bg-gray-800 border-gray-700 text-white">
             <DialogHeader>
-              <DialogTitle>Import ChatGPT Conversations</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-white">Import ChatGPT Conversations</DialogTitle>
+              <DialogDescription className="text-gray-300">
                 Upload your ChatGPT export JSON file to import conversations. Large files will be processed in chunks.
               </DialogDescription>
             </DialogHeader>
@@ -896,19 +994,20 @@ export default function ChatGPTLogger() {
               {!isImporting && (
                 <>
                   <div>
-                    <Label htmlFor="import-file">Select JSON File</Label>
+                    <Label htmlFor="import-file" className="text-gray-300">Select JSON File</Label>
                     <Input
                       id="import-file"
                       type="file"
                       accept=".json"
                       onChange={handleFileImport}
+                      className="bg-gray-900 border-gray-600 text-white"
                     />
                   </div>
                   {importFile && (
-                    <div className="p-3 bg-gray-50 rounded-lg text-sm">
-                      <p><strong>File:</strong> {importFile.name}</p>
-                      <p><strong>Size:</strong> {Math.round(importFile.size / 1024)} KB</p>
-                      <p><strong>Chunk Size:</strong> {config.maxChunkSize} conversations per batch</p>
+                    <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg text-sm">
+                      <p><strong className="text-blue-400">File:</strong> {importFile.name}</p>
+                      <p><strong className="text-blue-400">Size:</strong> {Math.round(importFile.size / 1024)} KB</p>
+                      <p><strong className="text-blue-400">Chunk Size:</strong> {config.maxChunkSize} conversations per batch</p>
                     </div>
                   )}
                 </>
@@ -917,9 +1016,9 @@ export default function ChatGPTLogger() {
               {isImporting && (
                 <div className="space-y-3">
                   <div className="text-center">
-                    <p className="text-sm text-gray-600">Importing conversations...</p>
+                    <p className="text-sm text-gray-300">Importing conversations...</p>
                     <Progress value={importProgress} className="mt-2" />
-                    <p className="text-xs text-gray-500 mt-1">{Math.round(importProgress)}% complete</p>
+                    <p className="text-xs text-gray-400 mt-1">{Math.round(importProgress)}% complete</p>
                   </div>
                 </div>
               )}
@@ -928,7 +1027,7 @@ export default function ChatGPTLogger() {
                 <Button 
                   onClick={processImportFile}
                   disabled={!importFile || isImporting}
-                  className="flex-1"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
                 >
                   {isImporting ? 'Importing...' : 'Import Conversations'}
                 </Button>
@@ -940,10 +1039,230 @@ export default function ChatGPTLogger() {
                     setImportProgress(0)
                   }}
                   disabled={isImporting}
+                  className="border-gray-600 text-white hover:bg-gray-700"
                 >
                   Cancel
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Comprehensive User Guide Dialog */}
+        <Dialog open={showGuide} onOpenChange={setShowGuide}>
+          <DialogContent className="max-w-4xl bg-gray-800 border-gray-700 text-white max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <Book className="w-5 h-5 text-blue-400" />
+                ChatGPT Logger - Complete User Guide
+              </DialogTitle>
+              <DialogDescription className="text-gray-300">
+                Everything you need to know to use the ChatGPT Conversation Logger effectively
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6">
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid w-full grid-cols-5 bg-gray-900">
+                  <TabsTrigger value="overview" className="text-white data-[state=active]:bg-blue-600">Overview</TabsTrigger>
+                  <TabsTrigger value="setup" className="text-white data-[state=active]:bg-blue-600">Setup</TabsTrigger>
+                  <TabsTrigger value="features" className="text-white data-[state=active]:bg-blue-600">Features</TabsTrigger>
+                  <TabsTrigger value="config" className="text-white data-[state=active]:bg-blue-600">Configuration</TabsTrigger>
+                  <TabsTrigger value="troubleshooting" className="text-white data-[state=active]:bg-blue-600">Help</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-4 text-gray-300">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">What is ChatGPT Logger?</h3>
+                    <p>ChatGPT Logger is a comprehensive web application that automatically captures, stores, and backs up your ChatGPT conversations. It provides a seamless interface to interact with ChatGPT while ensuring all your conversations are preserved locally and optionally backed up to GitHub.</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">Key Benefits</h3>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li><strong className="text-blue-400">Automatic Logging:</strong> Every conversation is saved automatically with timestamps</li>
+                      <li><strong className="text-blue-400">GitHub Backup:</strong> Schedule daily uploads to preserve your data in the cloud</li>
+                      <li><strong className="text-blue-400">Import History:</strong> Bring in your existing ChatGPT conversations from exports</li>
+                      <li><strong className="text-blue-400">Daily Organization:</strong> Conversations are organized by date for easy browsing</li>
+                      <li><strong className="text-blue-400">Multiple Models:</strong> Support for GPT-3.5, GPT-4, and GPT-4 Turbo</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">How It Works</h3>
+                    <p>The application connects directly to OpenAI's API, allowing you to send messages to ChatGPT while automatically logging every conversation. Your data is stored locally in your browser and can be backed up to GitHub for safekeeping.</p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="setup" className="space-y-4 text-gray-300">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">Initial Setup Process</h3>
+                    <ol className="list-decimal list-inside space-y-2">
+                      <li><strong className="text-blue-400">OpenAI API Key:</strong> Get your API key from <a href="https://platform.openai.com/api-keys" className="text-blue-400 underline" target="_blank">OpenAI Platform</a>. Create a new secret key and copy the full key starting with "sk-"</li>
+                      <li><strong className="text-blue-400">GitHub Token (Optional):</strong> Create a Personal Access Token from <a href="https://github.com/settings/tokens" className="text-blue-400 underline" target="_blank">GitHub Settings</a>. Select 'repo' scope for repository access</li>
+                      <li><strong className="text-blue-400">GitHub Repository:</strong> Specify your repository in format "username/repository-name". The repository must exist and your token must have write access</li>
+                      <li><strong className="text-blue-400">Upload Schedule:</strong> Choose when you want daily automatic uploads to occur (default: 22:00)</li>
+                    </ol>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">Where to Find Configuration Items</h3>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400">OpenAI API Key</h4>
+                        <p>1. Visit <a href="https://platform.openai.com" className="text-blue-400 underline" target="_blank">OpenAI Platform</a></p>
+                        <p>2. Sign in to your account</p>
+                        <p>3. Navigate to "API Keys" in the sidebar</p>
+                        <p>4. Click "Create new secret key"</p>
+                        <p>5. Copy the key (starts with "sk-")</p>
+                      </div>
+                      
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400">GitHub Personal Access Token</h4>
+                        <p>1. Go to <a href="https://github.com/settings/tokens" className="text-blue-400 underline" target="_blank">GitHub Token Settings</a></p>
+                        <p>2. Click "Generate new token" → "Generate new token (classic)"</p>
+                        <p>3. Give it a descriptive name like "ChatGPT Logger"</p>
+                        <p>4. Select "repo" scope (full control of private repositories)</p>
+                        <p>5. Click "Generate token" and copy the token (starts with "ghp_")</p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="features" className="space-y-4 text-gray-300">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">Core Features</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4" />
+                          Chat Interface
+                        </h4>
+                        <p>Send messages directly to ChatGPT and receive responses. All conversations are automatically logged with timestamps and model information.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          Import JSON
+                        </h4>
+                        <p>Import your existing ChatGPT conversation history from exported JSON files. Large files are processed in chunks to prevent browser freezing.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                          <TestTube className="w-4 h-4" />
+                          Trial Mode
+                        </h4>
+                        <p>Test your OpenAI and GitHub configuration to ensure everything is working correctly before regular use.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                          <History className="w-4 h-4" />
+                          Morning Prompt
+                        </h4>
+                        <p>Each morning, automatically get prompted to copy yesterday's conversations to today's session for continuity.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                          <Github className="w-4 h-4" />
+                          GitHub Backup
+                        </h4>
+                        <p>Automatically upload your daily conversations to GitHub for cloud backup and version control.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                          <Download className="w-4 h-4" />
+                          Export Data
+                        </h4>
+                        <p>Download your conversation history as JSON files for backup or analysis purposes.</p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="config" className="space-y-4 text-gray-300">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">Configuration Options</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400">OpenAI Model Selection</h4>
+                        <p>Choose between GPT-3.5 Turbo (faster, cheaper), GPT-4 (more capable), or GPT-4 Turbo (latest version) based on your needs and budget.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400">Import Chunk Size</h4>
+                        <p>Control how many conversations are processed at once during import (1-50). Lower values prevent browser freezing with large files.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400">Morning Prompt</h4>
+                        <p>Enable or disable the daily prompt to copy yesterday's conversations. Useful for maintaining conversation context across days.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400">Upload Schedule</h4>
+                        <p>Set the time for automatic daily uploads to GitHub. The scheduler runs in the background and uploads your conversations automatically.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-blue-400">Automatic Upload Toggle</h4>
+                        <p>Enable or disable the scheduler. When enabled, conversations are automatically uploaded to GitHub at the scheduled time.</p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="troubleshooting" className="space-y-4 text-gray-300">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">Common Issues & Solutions</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-red-400">OpenAI API Error</h4>
+                        <p><strong>Problem:</strong> "API key is invalid" or connection errors</p>
+                        <p><strong>Solution:</strong> Verify your API key is correct and starts with "sk-". Check your OpenAI account has sufficient credits.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-red-400">GitHub Upload Failed</h4>
+                        <p><strong>Problem:</strong> Upload to GitHub fails or returns errors</p>
+                        <p><strong>Solution:</strong> Ensure your GitHub token has 'repo' permissions and the repository exists. Check the repository name format is "username/repo-name".</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-red-400">Import Not Working</h4>
+                        <p><strong>Problem:</strong> JSON import fails or doesn't load conversations</p>
+                        <p><strong>Solution:</strong> Ensure you're using a valid ChatGPT export file. Try reducing the chunk size in settings if the file is very large.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-red-400">Missing Conversations</h4>
+                        <p><strong>Problem:</strong> Previous conversations disappeared</p>
+                        <p><strong>Solution:</strong> Conversations are stored by date. Check if you're looking at the correct day. Use the export feature to backup your data regularly.</p>
+                      </div>
+
+                      <div className="p-3 bg-gray-900 border border-gray-600 rounded-lg">
+                        <h4 className="font-semibold text-red-400">Scheduler Not Working</h4>
+                        <p><strong>Problem:</strong> Automatic uploads aren't happening</p>
+                        <p><strong>Solution:</strong> Ensure the scheduler is enabled (toggle switch) and your browser tab remains open at the scheduled time. For reliable scheduling, consider keeping the application open.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-blue-900 border border-blue-600 rounded-lg">
+                    <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                      <Info className="w-4 h-4" />
+                      Need More Help?
+                    </h4>
+                    <p>Use the <strong className="text-blue-400">Run Trial</strong> button to test your configuration. This will verify both OpenAI and GitHub connectivity and help identify any setup issues.</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </DialogContent>
         </Dialog>
