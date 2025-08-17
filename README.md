@@ -10,6 +10,9 @@ A comprehensive web application that captures, stores, and automatically backs u
 - **Daily Organization**: Chat logs are organized by date for easy retrieval
 - **Local Storage**: Conversations are stored locally in your browser
 - **Export Functionality**: Download daily chat logs as JSON files
+- **Morning Prompt**: Automatic prompt each morning to copy yesterday's conversations
+- **JSON Import**: Import existing ChatGPT conversation exports with chunked processing
+- **Trial Mode**: Test your configuration to verify OpenAI and GitHub connectivity
 
 ### 🔧 Setup & Configuration
 - **Installation Wizard**: Guided setup process with progress indicators
@@ -76,6 +79,9 @@ bun dev
 - **View History**: Browse today's conversations in the history panel
 - **Upload to GitHub**: Use manual upload or enable automatic scheduling
 - **Export Data**: Download conversation logs as JSON files
+- **Import Conversations**: Upload ChatGPT export JSON files to import historical conversations
+- **Morning Workflow**: Each morning, get prompted to copy yesterday's conversations to today
+- **Trial Testing**: Run connectivity tests to verify your OpenAI and GitHub configuration
 - **Manage Settings**: Update configuration anytime through the settings panel
 
 ## API Endpoints
@@ -94,6 +100,31 @@ bun dev
 - `GET /api/scheduler` - Get scheduler status
 - `POST /api/scheduler` - Control scheduler (start/stop/status)
 - Actions: `start`, `stop`, `status`
+
+## New Features
+
+### 📅 Morning Prompt
+Each morning when you open the application, you'll be prompted to copy yesterday's conversations:
+- Automatically detects if you have conversations from the previous day
+- One-click copying of all yesterday's conversations to today's session
+- Can be enabled/disabled in settings
+- Remembers if you've already been prompted today
+
+### 📂 ChatGPT JSON Import
+Import your existing ChatGPT conversation history:
+- Supports ChatGPT export JSON format
+- Handles both new mapping format and legacy message format
+- Chunked processing to prevent UI freezing on large files
+- Configurable chunk size (1-50 conversations per batch)
+- Progress indicator during import
+- Automatically organizes imported conversations by date
+
+### 🧪 Trial Mode
+Test your configuration before regular use:
+- Tests OpenAI API connectivity with a sample prompt
+- Verifies GitHub upload functionality if configured
+- Provides clear success/failure feedback
+- Helps troubleshoot configuration issues
 
 ## Configuration Options
 

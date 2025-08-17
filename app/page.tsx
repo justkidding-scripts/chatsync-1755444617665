@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Switch } from '@/components/ui/switch'
-import { Calendar, Clock, Github, MessageSquare, Settings, Download, Upload, CheckCircle, AlertCircle, Play, Square } from 'lucide-react'
+import { Calendar, Clock, Github, MessageSquare, Settings, Download, Upload, CheckCircle, AlertCircle, Play, Square, FileText, Copy, TestTube, History } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ChatEntry {
@@ -29,6 +29,16 @@ interface Config {
   uploadTime: string
   autoUpload: boolean
   model: string
+  maxChunkSize: number
+  morningPromptEnabled: boolean
+}
+
+interface ImportedChat {
+  title?: string
+  create_time?: number
+  mapping?: any
+  messages?: any[]
+  conversation_id?: string
 }
 
 export default function ChatGPTLogger() {
@@ -38,7 +48,9 @@ export default function ChatGPTLogger() {
     githubRepo: '',
     uploadTime: '22:00',
     autoUpload: true,
-    model: 'gpt-3.5-turbo'
+    model: 'gpt-3.5-turbo',
+    maxChunkSize: 10,
+    morningPromptEnabled: true
   })
   
   const [prompt, setPrompt] = useState('')
@@ -51,6 +63,13 @@ export default function ChatGPTLogger() {
   const [isInstalling, setIsInstalling] = useState(false)
   const [lastUpload, setLastUpload] = useState<string | null>(null)
   const [schedulerRunning, setSchedulerRunning] = useState(false)
+  const [showMorningPrompt, setShowMorningPrompt] = useState(false)
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importProgress, setImportProgress] = useState(0)
+  const [isImporting, setIsImporting] = useState(false)
+  const [showTrialMode, setShowTrialMode] = useState(false)
+  const [yesterdayCount, setYesterdayCount] = useState(0)
 
   const setupSteps = [
     'Installing Dependencies',
@@ -64,14 +83,22 @@ export default function ChatGPTLogger() {
     loadConfig()
     loadChatHistory()
     checkLastUpload()
+    checkMorningPrompt()
   }, [])
 
   const loadConfig = () => {
     const savedConfig = localStorage.getItem('chatgpt-logger-config')
     if (savedConfig) {
       const parsed = JSON.parse(savedConfig)
-      setConfig(parsed)
-      setIsConfigured(!!parsed.openaiApiKey && !!parsed.githubToken && !!parsed.githubRepo)
+      // Ensure new properties have defaults
+      const configWithDefaults = {
+        ...config,
+        ...parsed,
+        maxChunkSize: parsed.maxChunkSize || 10,
+        morningPromptEnabled: parsed.morningPromptEnabled !== undefined ? parsed.morningPromptEnabled : true
+      }
+      setConfig(configWithDefaults)
+      setIsConfigured(!!configWithDefaults.openaiApiKey && !!configWithDefaults.githubToken && !!configWithDefaults.githubRepo)
     }
   }
 
@@ -99,6 +126,238 @@ export default function ChatGPTLogger() {
   const checkLastUpload = () => {
     const lastUploadDate = localStorage.getItem('last-github-upload')
     setLastUpload(lastUploadDate)
+  }
+
+  const checkMorningPrompt = () => {
+    const today = new Date().toISOString().split('T')[0]
+    const lastPrompt = localStorage.getItem('last-morning-prompt')
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const yesterdayHistory = localStorage.getItem(`chat-history-${yesterday}`)
+    
+    if (yesterdayHistory) {
+      const yesterdayChats = JSON.parse(yesterdayHistory)
+      setYesterdayCount(yesterdayChats.length)
+      
+      if (config.morningPromptEnabled && lastPrompt !== today && yesterdayChats.length > 0) {
+        setShowMorningPrompt(true)
+      }
+    }
+  }
+
+  const copyYesterdayConversations = () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const yesterdayHistory = localStorage.getItem(`chat-history-${yesterday}`)
+    
+    if (yesterdayHistory) {
+      const yesterdayChats = JSON.parse(yesterdayHistory)
+      const newHistory = [...chatHistory, ...yesterdayChats]
+      setChatHistory(newHistory)
+      
+      const today = new Date().toISOString().split('T')[0]
+      localStorage.setItem(`chat-history-${today}`, JSON.stringify(newHistory))
+      localStorage.setItem('last-morning-prompt', today)
+      
+      setShowMorningPrompt(false)
+      toast.success(`Copied ${yesterdayChats.length} conversations from yesterday!`)
+    }
+  }
+
+  const dismissMorningPrompt = () => {
+    const today = new Date().toISOString().split('T')[0]
+    localStorage.setItem('last-morning-prompt', today)
+    setShowMorningPrompt(false)
+  }
+
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    
+    setImportFile(file)
+  }
+
+  const processImportFile = async () => {
+    if (!importFile) return
+    
+    setIsImporting(true)
+    setImportProgress(0)
+    
+    try {
+      const text = await importFile.text()
+      const data = JSON.parse(text)
+      
+      let conversations: ImportedChat[] = []
+      
+      // Handle different ChatGPT export formats
+      if (Array.isArray(data)) {
+        conversations = data
+      } else if (data.conversations) {
+        conversations = data.conversations
+      } else if (data.mapping) {
+        conversations = [data]
+      }
+      
+      const totalConversations = conversations.length
+      const chunkSize = config.maxChunkSize
+      let processedCount = 0
+      
+      for (let i = 0; i < conversations.length; i += chunkSize) {
+        const chunk = conversations.slice(i, i + chunkSize)
+        
+        for (const conv of chunk) {
+          const chatEntries = extractChatEntries(conv)
+          if (chatEntries.length > 0) {
+            const convDate = conv.create_time 
+              ? new Date(conv.create_time * 1000).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0]
+            
+            const existingHistory = localStorage.getItem(`chat-history-${convDate}`)
+            const existing = existingHistory ? JSON.parse(existingHistory) : []
+            const combined = [...existing, ...chatEntries]
+            
+            localStorage.setItem(`chat-history-${convDate}`, JSON.stringify(combined))
+          }
+          
+          processedCount++
+          setImportProgress((processedCount / totalConversations) * 100)
+        }
+        
+        // Add delay between chunks to prevent UI freezing
+        if (i + chunkSize < conversations.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      }
+      
+      loadChatHistory() // Refresh current day's history
+      setShowImportDialog(false)
+      setImportFile(null)
+      toast.success(`Successfully imported ${processedCount} conversations!`)
+    } catch (error) {
+      toast.error('Failed to import file. Please check the format.')
+    } finally {
+      setIsImporting(false)
+      setImportProgress(0)
+    }
+  }
+
+  const extractChatEntries = (conversation: ImportedChat): ChatEntry[] => {
+    const entries: ChatEntry[] = []
+    
+    if (conversation.mapping) {
+      // Handle new ChatGPT export format
+      Object.values(conversation.mapping).forEach((node: any) => {
+        if (node.message?.content?.parts?.length > 0) {
+          const message = node.message
+          const content = message.content.parts.join('')
+          const timestamp = conversation.create_time 
+            ? new Date(conversation.create_time * 1000).toISOString()
+            : new Date().toISOString()
+          
+          if (message.author.role === 'user') {
+            // Store user message to pair with assistant response
+            const userMessage = content
+            // Find corresponding assistant response
+            const assistantNode = Object.values(conversation.mapping).find((n: any) => 
+              n.parent === node.id && n.message?.author?.role === 'assistant'
+            ) as any
+            
+            if (assistantNode?.message?.content?.parts?.length > 0) {
+              entries.push({
+                timestamp,
+                prompt: userMessage,
+                response: assistantNode.message.content.parts.join(''),
+                model: assistantNode.message.metadata?.model_slug || 'unknown'
+              })
+            }
+          }
+        }
+      })
+    } else if (conversation.messages) {
+      // Handle older format
+      for (let i = 0; i < conversation.messages.length - 1; i += 2) {
+        const userMsg = conversation.messages[i]
+        const assistantMsg = conversation.messages[i + 1]
+        
+        if (userMsg?.role === 'user' && assistantMsg?.role === 'assistant') {
+          entries.push({
+            timestamp: conversation.create_time 
+              ? new Date(conversation.create_time * 1000).toISOString()
+              : new Date().toISOString(),
+            prompt: userMsg.content,
+            response: assistantMsg.content,
+            model: 'imported'
+          })
+        }
+      }
+    }
+    
+    return entries
+  }
+
+  const runTrial = async () => {
+    setShowTrialMode(true)
+    
+    // Test OpenAI connection
+    const testPrompt = "Say 'Hello, this is a test!' to confirm the connection is working."
+    
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: testPrompt,
+          apiKey: config.openaiApiKey,
+          model: config.model
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response')
+      }
+      
+      toast.success('✅ OpenAI connection test successful!')
+      
+      // Test GitHub upload if configured
+      if (config.githubToken && config.githubRepo) {
+        const testEntry: ChatEntry = {
+          timestamp: new Date().toISOString(),
+          prompt: testPrompt,
+          response: data.response,
+          model: data.model
+        }
+        
+        try {
+          const githubResponse = await fetch('/api/github/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chatHistory: [testEntry],
+              githubToken: config.githubToken,
+              githubRepo: config.githubRepo
+            }),
+          })
+
+          if (githubResponse.ok) {
+            toast.success('✅ GitHub upload test successful!')
+          } else {
+            toast.error('❌ GitHub upload test failed')
+          }
+        } catch (error) {
+          toast.error('❌ GitHub upload test failed')
+        }
+      }
+      
+      toast.success('Trial completed! All systems are working.')
+    } catch (error) {
+      toast.error('❌ OpenAI connection test failed. Check your API key.')
+    } finally {
+      setShowTrialMode(false)
+    }
   }
 
   const simulateInstallation = async () => {
@@ -336,12 +595,51 @@ export default function ChatGPTLogger() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
+        {/* Morning Prompt Dialog */}
+        {showMorningPrompt && (
+          <Alert className="border-blue-200 bg-blue-50">
+            <History className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                Good morning! You have {yesterdayCount} conversations from yesterday. 
+                Would you like to copy them to today?
+              </span>
+              <div className="flex gap-2 ml-4">
+                <Button size="sm" onClick={copyYesterdayConversations}>
+                  <Copy className="w-4 h-4 mr-1" />
+                  Copy Yesterday's Chats
+                </Button>
+                <Button size="sm" variant="outline" onClick={dismissMorningPrompt}>
+                  Skip
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <MessageSquare className="w-8 h-8 text-blue-600" />
             <h1 className="text-2xl font-bold">ChatGPT Logger</h1>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowImportDialog(true)}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Import JSON
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={runTrial}
+              disabled={showTrialMode || !config.openaiApiKey}
+            >
+              <TestTube className="w-4 h-4 mr-2" />
+              {showTrialMode ? 'Testing...' : 'Run Trial'}
+            </Button>
             <Badge variant={schedulerRunning ? "default" : "secondary"}>
               {schedulerRunning ? "Scheduler Active" : "Scheduler Inactive"}
             </Badge>
@@ -541,6 +839,26 @@ export default function ChatGPTLogger() {
                           onChange={(e) => setConfig({ ...config, uploadTime: e.target.value })}
                         />
                       </div>
+                      <div>
+                        <Label htmlFor="edit-chunk-size">Import Chunk Size</Label>
+                        <Input
+                          id="edit-chunk-size"
+                          type="number"
+                          min="1"
+                          max="50"
+                          value={config.maxChunkSize}
+                          onChange={(e) => setConfig({ ...config, maxChunkSize: parseInt(e.target.value) || 10 })}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Number of conversations to process at once during import</p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="edit-morning-prompt">Morning Prompt</Label>
+                        <Switch
+                          id="edit-morning-prompt"
+                          checked={config.morningPromptEnabled}
+                          onCheckedChange={(checked) => setConfig({ ...config, morningPromptEnabled: checked })}
+                        />
+                      </div>
                       <Button onClick={() => saveConfig(config)} className="w-full">
                         Save Changes
                       </Button>
@@ -564,6 +882,71 @@ export default function ChatGPTLogger() {
             </Card>
           </div>
         </div>
+
+        {/* Import Dialog */}
+        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Import ChatGPT Conversations</DialogTitle>
+              <DialogDescription>
+                Upload your ChatGPT export JSON file to import conversations. Large files will be processed in chunks.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {!isImporting && (
+                <>
+                  <div>
+                    <Label htmlFor="import-file">Select JSON File</Label>
+                    <Input
+                      id="import-file"
+                      type="file"
+                      accept=".json"
+                      onChange={handleFileImport}
+                    />
+                  </div>
+                  {importFile && (
+                    <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                      <p><strong>File:</strong> {importFile.name}</p>
+                      <p><strong>Size:</strong> {Math.round(importFile.size / 1024)} KB</p>
+                      <p><strong>Chunk Size:</strong> {config.maxChunkSize} conversations per batch</p>
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {isImporting && (
+                <div className="space-y-3">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Importing conversations...</p>
+                    <Progress value={importProgress} className="mt-2" />
+                    <p className="text-xs text-gray-500 mt-1">{Math.round(importProgress)}% complete</p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button 
+                  onClick={processImportFile}
+                  disabled={!importFile || isImporting}
+                  className="flex-1"
+                >
+                  {isImporting ? 'Importing...' : 'Import Conversations'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowImportDialog(false)
+                    setImportFile(null)
+                    setImportProgress(0)
+                  }}
+                  disabled={isImporting}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
